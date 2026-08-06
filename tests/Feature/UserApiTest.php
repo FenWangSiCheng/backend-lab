@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Repositories\UserRepository;
 use App\Models\User;
+use App\Repositories\EloquentUserRepository;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -10,6 +12,14 @@ use Tests\TestCase;
 class UserApiTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    public function test_it_resolves_the_user_repository_contract(): void
+    {
+        $this->assertInstanceOf(
+            EloquentUserRepository::class,
+            $this->app->make(UserRepository::class),
+        );
+    }
 
     public function test_it_creates_and_reads_a_user(): void
     {
