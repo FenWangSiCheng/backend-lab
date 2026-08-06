@@ -1,0 +1,32 @@
+[
+    {
+        "name": "张三",
+        "scores": [
+            80,
+            75,
+            90
+        ],
+        "average": 81.7,
+        "passed": true
+    },
+    {
+        "name": "李四",
+        "scores": [
+            55,
+            62,
+            58
+        ],
+        "average": 58.3,
+        "passed": false
+    },
+    {
+        "name": "王五",
+        "scores": [
+            95,
+            88,
+            92
+        ],
+        "average": 91.7,
+        "passed": true
+    }
+]
