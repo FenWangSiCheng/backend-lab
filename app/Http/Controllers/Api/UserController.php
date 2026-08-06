@@ -3,54 +3,48 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\IndexUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
-use App\Services\UserService;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
-    public function __construct(
-        private readonly UserService $userService,
-    ) {}
-
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexUserRequest $request): AnonymousResourceCollection
     {
-        $perPage = min(max($request->integer('per_page', 15), 1), 100);
-
         return UserResource::collection(
-            $this->userService->paginate($perPage),
+            User::query()->latest()->paginate($request->perPage()),
         );
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $user = $this->userService->create($request->validated());
+        $user = User::query()->create($request->validated());
 
         return (new UserResource($user))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    public function show(int $user): UserResource
+    public function show(User $user): UserResource
     {
-        return new UserResource($this->userService->find($user));
+        return new UserResource($user);
     }
 
-    public function update(UpdateUserRequest $request, int $user): UserResource
+    public function update(UpdateUserRequest $request, User $user): UserResource
     {
-        return new UserResource(
-            $this->userService->update($user, $request->validated()),
-        );
+        $user->update($request->validated());
+
+        return new UserResource($user);
     }
 
-    public function destroy(int $user): Response
+    public function destroy(User $user): Response
     {
-        $this->userService->delete($user);
+        $user->delete();
 
         return response()->noContent();
     }
