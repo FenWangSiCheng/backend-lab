@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Repositories\UserRepository;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class UserService
 {
@@ -36,6 +37,9 @@ class UserService
 
     public function delete(User $user): void
     {
-        $this->users->delete($user);
+        DB::transaction(function () use ($user): void {
+            $user->tokens()->delete();
+            $this->users->delete($user);
+        });
     }
 }

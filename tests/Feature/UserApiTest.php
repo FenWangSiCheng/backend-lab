@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\EloquentUserRepository;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class UserApiTest extends TestCase
@@ -40,18 +41,19 @@ class UserApiTest extends TestCase
 
         $this->assertTrue(Hash::check('password123', $user->password));
 
+        Sanctum::actingAs($user);
+
         $this->getJson(route('users.show', $user))
             ->assertOk()
             ->assertJsonPath('data.email', 'zhangsan@example.com');
     }
 
-    public function test_it_lists_updates_and_deletes_users(): void
+    public function test_a_user_can_update_and_delete_their_own_account(): void
     {
         $user = User::factory()->create();
+        $user->createToken('account-token');
 
-        $this->getJson(route('users.index'))
-            ->assertOk()
-            ->assertJsonCount(1, 'data');
+        Sanctum::actingAs($user);
 
         $this->patchJson(route('users.update', $user), [
             'name' => '新名字',
@@ -64,31 +66,38 @@ class UserApiTest extends TestCase
             ->assertNoContent();
 
         $this->assertModelMissing($user);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
-    public function test_it_validates_user_input_and_returns_not_found(): void
+    public function test_it_validates_registration_and_returns_not_found(): void
     {
         $this->postJson(route('users.store'), [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name', 'email', 'password']);
 
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+
         $this->getJson(route('users.show', 999))
             ->assertNotFound();
     }
 
-    public function test_it_validates_and_applies_the_page_size(): void
+    public function test_a_user_cannot_access_other_users_or_list_users(): void
     {
-        User::factory()->count(3)->create();
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
 
-        $this->getJson(route('users.index', ['per_page' => 2]))
-            ->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('meta.per_page', 2);
+        Sanctum::actingAs($user);
 
-        foreach ([0, 101, 'many'] as $invalidPageSize) {
-            $this->getJson(route('users.index', ['per_page' => $invalidPageSize]))
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors('per_page');
-        }
+        $this->getJson(route('users.index'))->assertForbidden();
+        $this->getJson(route('users.show', $otherUser))->assertForbidden();
+        $this->patchJson(route('users.update', $otherUser), [
+            'name' => '越权修改',
+        ])->assertForbidden();
+        $this->deleteJson(route('users.destroy', $otherUser))->assertForbidden();
+
+        $this->assertSame($otherUser->name, $otherUser->fresh()->name);
+        $this->assertModelExists($otherUser);
     }
 }

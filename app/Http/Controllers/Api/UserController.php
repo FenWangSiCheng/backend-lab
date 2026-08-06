@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
@@ -35,6 +36,8 @@ class UserController extends Controller
 
     public function show(User $user): UserResource
     {
+        Gate::authorize('view', $user);
+
         return new UserResource($user);
     }
 
@@ -47,6 +50,8 @@ class UserController extends Controller
 
     public function destroy(User $user): Response
     {
+        Gate::authorize('delete', $user);
+
         $this->users->delete($user);
 
         return response()->noContent();
